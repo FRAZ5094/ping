@@ -14,7 +14,7 @@ type Host struct {
 }
 
 type Settings struct {
-	TimeoutSeconds int64 `yaml:timeout_seconds,omitempty`
+	TimeoutSeconds int64 `yaml:"timeout_seconds"`
 }
 
 type Config struct {

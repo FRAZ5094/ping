@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	"ping/config"
+	config "ping/config"
+	tui "ping/tui"
 	"sync"
 	"time"
 
@@ -34,13 +35,26 @@ func ping(host config.Host, settings config.Settings, wg *sync.WaitGroup) {
 }
 
 func main() {
-	config := config.Parse("config.yaml")
-	wg := new(sync.WaitGroup)
+	// config := config.Parse("config.yaml")
+	// wg := new(sync.WaitGroup)
 
-	for _, host := range config.Hosts {
-		wg.Add(1)
-		go ping(host, config.Settings, wg)
+	// for _, host := range config.Hosts {
+	// 	wg.Add(1)
+	// 	go ping(host, config.Settings, wg)
+	// }
+	// wg.Wait()
+	// fmt.Scanf("h")
+
+	hosts := []tui.Host{
+		{
+			Name: "Google",
+			Addr: "www.google.com",
+		},
+		{
+			Name: "Cloudflare",
+			Addr: "1.1.1.1",
+		},
 	}
-	wg.Wait()
-	fmt.Scanf("h")
+
+	tui.Run(hosts)
 }
