@@ -11,22 +11,31 @@ import (
 )
 
 var (
-	gray        = lipgloss.Color("245")
-	BorderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#7dcfff"))
-	HeaderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#7dcfff")).Bold(true).Align(lipgloss.Center)
+	gray         = lipgloss.Color("#c0caf5")
+	errorColor   = lipgloss.Color("#f7768e")
+	warningColor = lipgloss.Color("#ff9e64")
+	successColor = lipgloss.Color("#9ece6a")
+	primaryColor = lipgloss.Color("#7dcfff")
 
-	rowStyle = lipgloss.NewStyle().Padding(0, 1).Foreground(lipgloss.Color(gray)).AlignHorizontal(lipgloss.Left)
+	BorderStyle = lipgloss.NewStyle().Foreground(primaryColor)
+	HeaderStyle = lipgloss.NewStyle().Foreground(primaryColor).Bold(true).Align(lipgloss.Center)
 
-	UpStatus   = lipgloss.NewStyle().Foreground(lipgloss.Color("42")).SetString("UP")
-	DownStatus = lipgloss.NewStyle().Foreground(lipgloss.Color("160")).SetString("DOWN")
+	rowStyle = lipgloss.NewStyle().Padding(0, 1).Foreground(gray).AlignHorizontal(lipgloss.Left)
 
-	LatencyStyleGood = lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
-	LatencyStyleBad  = lipgloss.NewStyle().Foreground(lipgloss.Color("160"))
+	UpStatus   = lipgloss.NewStyle().Foreground(successColor).SetString("UP")
+	DownStatus = lipgloss.NewStyle().Foreground(errorColor).SetString("DOWN")
+
+	LatencyStyleGood    = lipgloss.NewStyle().Foreground(successColor)
+	LatencyStyleWarning = lipgloss.NewStyle().Foreground(warningColor)
+	LatencyStyleBad     = lipgloss.NewStyle().Foreground(errorColor)
 )
 
 func getLatencyStyle(latency time.Duration) lipgloss.Style {
 	if latency < 50*time.Millisecond {
 		return LatencyStyleGood
+	}
+	if latency < 100*time.Millisecond {
+		return LatencyStyleWarning
 	}
 	return LatencyStyleBad
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/FRAZ5094/ping/pinger"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type model struct {
@@ -92,6 +93,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func Start(hosts []config.Host) {
 
 	var spinner = spinner.New()
+	var SpinnerStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("69"))
 	spinner.Style = SpinnerStyle
 
 	resultsChan := make(chan pingResultMsg)
