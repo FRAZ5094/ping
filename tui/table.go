@@ -71,31 +71,6 @@ func RenderTable(results map[string]*pinger.PingResult, hosts []config.Host, spi
 			}
 
 			return rowStyle
-			// if row == table.HeaderRow {
-			// 	return headerStyle
-			// }
-
-			// if data[row][1] == "Pikachu" {
-			// 	return selectedStyle
-			// }
-
-			// even := row%2 == 0
-
-			// switch col {
-			// case 2, 3: // Type 1 + 2
-			// 	c := typeColors
-			// 	if even {
-			// 		c = dimTypeColors
-			// 	}
-
-			// 	color := c[fmt.Sprint(data[row][col])]
-			// 	return baseStyle.Foreground(color)
-			// }
-
-			// if even {
-			// 	return baseStyle.Foreground(lipgloss.Color("245"))
-			// }
-			// return baseStyle.Foreground(lipgloss.Color("252"))
 		})
 
 	return t.Render()
