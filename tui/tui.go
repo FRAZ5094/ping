@@ -64,36 +64,8 @@ func (m model) View() string {
 	m.spinner.Spinner = spinner.Line
 	s += m.spinner.View() + " Running pings...\n\n"
 
-	s += RenderTable(m.results, m.hosts)
+	s += RenderTable(m.results, m.hosts, m.spinner)
 
-	return s
-
-	for _, host := range m.hosts {
-		result := m.results[host.Name]
-		if result == nil {
-			s += fmt.Sprintf("%s %s: Loading...\n", m.spinner.View(), NameStyle.Render(host.Name))
-		} else {
-			if result.Success {
-				s += fmt.Sprintf("%s %s: %s\n", CheckMark, NameStyle.Render(host.Name), result.Duration)
-			} else {
-				s += fmt.Sprintf("%s %s: %s\n", CrossMark, NameStyle.Render(host.Name), result.Duration)
-			}
-		}
-	}
-	// if len(results) == 0 {
-	// 	m.spinner.Spinner = spinner.Dot
-	// 	for _, host := range m.hosts {
-	// 		s += fmt.Sprintf("%s%s: ...\n", m.spinner.View(), NameStyle.Render(host.name))
-	// 	}
-	// } else {
-	// 	for _, r := range *m.results {
-	// 		if r.success {
-	// 			s += fmt.Sprintf("%s %s: %s\n", CheckMark, NameStyle.Render(r.host.name), r.duration)
-	// 		} else {
-	// 			s += fmt.Sprintf("%s %s: %s\n", CrossMark, NameStyle.Render(r.host.name), r.duration)
-	// 		}
-	// 	}
-	// }
 	s += "\n\n"
 	s += "Press any key to exit \n"
 	return s

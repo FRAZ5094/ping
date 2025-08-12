@@ -1,42 +1,67 @@
 package tui
 
 import (
-	"os"
+	"time"
 
 	"github.com/FRAZ5094/ping/config"
 	"github.com/FRAZ5094/ping/pinger"
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/table"
 )
 
-func RenderTable(results map[string]*pinger.PingResult, hosts []config.Host) string {
-	re := lipgloss.NewRenderer(os.Stdout)
-	baseStyle := re.NewStyle().Padding(0, 1)
-	// headerStyle := baseStyle.Foreground(lipgloss.Color("252")).Bold(true)
-	headers := []string{"Host", "Status", "Duration"}
+var (
+	gray        = lipgloss.Color("245")
+	BorderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#7dcfff"))
+	HeaderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#7dcfff")).Bold(true).Align(lipgloss.Center)
+
+	rowStyle = lipgloss.NewStyle().Padding(0, 1).Foreground(lipgloss.Color(gray)).AlignHorizontal(lipgloss.Left)
+
+	UpStatus   = lipgloss.NewStyle().Foreground(lipgloss.Color("42")).SetString("UP")
+	DownStatus = lipgloss.NewStyle().Foreground(lipgloss.Color("160")).SetString("DOWN")
+
+	LatencyStyleGood = lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
+	LatencyStyleBad  = lipgloss.NewStyle().Foreground(lipgloss.Color("160"))
+)
+
+func getLatencyStyle(latency time.Duration) lipgloss.Style {
+	if latency < 50*time.Millisecond {
+		return LatencyStyleGood
+	}
+	return LatencyStyleBad
+}
+
+func RenderTable(results map[string]*pinger.PingResult, hosts []config.Host, spinnerModel spinner.Model) string {
+	headers := []string{"HOST", "STATUS", "LATENCY"}
 
 	data := [][]string{}
 	for _, host := range hosts {
 		result := results[host.Name]
 		if result == nil {
-			data = append(data, []string{host.Name, "Loading...", "..."})
+			spinnerModel.Spinner = spinner.Dot
+			data = append(data, []string{host.Name, spinnerModel.View(), "N/A"})
 		} else {
 			if result.Success {
-				data = append(data, []string{host.Name, "OK", result.Duration.String()})
+				latencyStyle := getLatencyStyle(result.Latency)
+				data = append(data, []string{host.Name, UpStatus.Render(), latencyStyle.Render(result.Latency.String())})
 			} else {
-				data = append(data, []string{host.Name, "Error", result.Duration.String()})
+				data = append(data, []string{host.Name, DownStatus.Render(), LatencyStyleBad.Render("N/A")})
 			}
 		}
 	}
 
 	t := table.New().
 		Border(lipgloss.NormalBorder()).
-		BorderStyle(re.NewStyle().Foreground(lipgloss.Color("238"))).
+		BorderStyle(BorderStyle).
 		Headers(headers...).
 		Width(80).
 		Rows(data...).
 		StyleFunc(func(row, col int) lipgloss.Style {
-			return baseStyle
+			if row == table.HeaderRow {
+				return HeaderStyle
+			}
+
+			return rowStyle
 			// if row == table.HeaderRow {
 			// 	return headerStyle
 			// }

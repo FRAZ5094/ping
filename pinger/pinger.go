@@ -8,8 +8,8 @@ import (
 )
 
 type PingResult struct {
-	Success  bool
-	Duration time.Duration
+	Success bool
+	Latency time.Duration
 }
 
 type Pinger interface {
@@ -19,9 +19,12 @@ type Pinger interface {
 type mockPinger struct{}
 
 func (p *mockPinger) Ping(host config.Host) PingResult {
+	latency := time.Millisecond * time.Duration(rand.Intn(100))
+	success := rand.Intn(2) == 0
+	time.Sleep(latency)
 	return PingResult{
-		Success:  rand.Intn(2) == 0,
-		Duration: 100 * time.Millisecond * time.Duration(rand.Intn(10)),
+		Success: success,
+		Latency: latency,
 	}
 }
 
