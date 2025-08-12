@@ -128,7 +128,13 @@ func Start(hosts []config.Host) {
 		results[host.Name] = nil
 	}
 
-	model := model{hosts: hosts, spinner: spinner, resultsChan: resultsChan, results: results, timer: timer.NewWithInterval(pingInterval, time.Millisecond), timerResetChan: make(chan struct{})}
+	model := model{
+		hosts:       hosts,
+		spinner:     spinner,
+		resultsChan: resultsChan,
+		results:     results,
+		timer:       timer.NewWithInterval(pingInterval, time.Millisecond),
+	}
 
 	p := tea.NewProgram(model)
 
