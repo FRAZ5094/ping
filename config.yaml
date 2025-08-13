@@ -1,6 +1,8 @@
 hosts:
-  - name: "Google"
-    addr: "www.google.com"
+  - name: "Google DNS"
+    addr: "8.8.8.8"
+  - name: "Cloudflare DNS"
+    addr: "1.1.1.1"
   - name: "My PC"
     addr: "10.30.128.11"
 

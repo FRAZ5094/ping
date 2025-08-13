@@ -41,20 +41,20 @@ func getLatencyStyle(latency time.Duration) lipgloss.Style {
 }
 
 func RenderTable(results map[string]*pinger.PingResult, hosts []config.Host, spinnerModel spinner.Model) string {
-	headers := []string{"HOST", "STATUS", "LATENCY"}
+	headers := []string{"HOST", "ADDRESS", "STATUS", "LATENCY"}
 
 	data := [][]string{}
 	for _, host := range hosts {
 		result := results[host.Name]
 		if result == nil {
 			spinnerModel.Spinner = spinner.Dot
-			data = append(data, []string{host.Name, spinnerModel.View(), "N/A"})
+			data = append(data, []string{host.Name, host.Addr, spinnerModel.View(), "N/A"})
 		} else {
 			if result.Success && result.Latency != nil {
 				latencyStyle := getLatencyStyle(*result.Latency)
-				data = append(data, []string{host.Name, UpStatus.Render(), latencyStyle.Render(result.Latency.String())})
+				data = append(data, []string{host.Name, host.Addr, UpStatus.Render(), latencyStyle.Render(result.Latency.String())})
 			} else {
-				data = append(data, []string{host.Name, DownStatus.Render(), LatencyStyleBad.Render("N/A")})
+				data = append(data, []string{host.Name, host.Addr, DownStatus.Render(), LatencyStyleBad.Render("N/A")})
 			}
 		}
 	}
