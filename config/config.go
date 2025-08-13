@@ -14,7 +14,7 @@ type Host struct {
 }
 
 type Settings struct {
-	TimeoutSeconds int64 `yaml:"timeout_seconds"`
+	PingIntervalSeconds int `yaml:"ping_interval_seconds"`
 }
 
 type Config struct {
@@ -45,9 +45,8 @@ func Parse(path string) Config {
 		panic(err)
 	}
 
-	if !(config.Settings.TimeoutSeconds > 0) {
-		fmt.Println("No timeout value was supplied, using default 1 second")
-		config.Settings.TimeoutSeconds = 1
+	if !(config.Settings.PingIntervalSeconds > 0) {
+		config.Settings.PingIntervalSeconds = 5
 	}
 
 	return config

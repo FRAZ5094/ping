@@ -20,6 +20,7 @@ type model struct {
 	spinner        spinner.Model
 	timer          timer.Model
 	timerResetChan chan struct{}
+	pingInterval   time.Duration
 }
 
 func ping(host config.Host) pinger.PingResult {
@@ -33,9 +34,7 @@ type pingResultMsg struct {
 	result pinger.PingResult
 }
 
-var pingInterval = 1 * time.Second
-
-func runPings(hosts []config.Host, resultsChan chan pingResultMsg, timerResetChan chan struct{}) tea.Cmd {
+func runPings(hosts []config.Host, pingInterval time.Duration, resultsChan chan pingResultMsg, timerResetChan chan struct{}) tea.Cmd {
 	return func() tea.Msg {
 		for {
 			for _, host := range hosts {
@@ -69,7 +68,7 @@ func waitForTimerReset(timerResetChan chan struct{}) tea.Cmd {
 
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
-		runPings(m.hosts, m.resultsChan, m.timerResetChan),
+		runPings(m.hosts, m.pingInterval, m.resultsChan, m.timerResetChan),
 		waitForResult(m.resultsChan),
 		m.spinner.Tick,
 		m.timer.Init(),
@@ -79,7 +78,7 @@ func (m model) Init() tea.Cmd {
 
 func (m model) View() string {
 	s := "\n"
-	// s += RenderTable(m.results, m.hosts, m.spinner)
+	s += RenderTable(m.results, m.hosts, m.spinner)
 	s += "\n"
 	m.spinner.Spinner = spinner.Dot
 	s += fmt.Sprintf("Next ping in: %s\n", m.timer.View())
@@ -98,7 +97,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		return m, tea.Quit
 	case timerResetMsg:
-		m.timer = timer.NewWithInterval(pingInterval, time.Millisecond)
+		m.timer = timer.NewWithInterval(m.pingInterval, time.Millisecond)
 		return m, tea.Batch(
 			m.timer.Init(),
 			waitForTimerReset(m.timerResetChan),
@@ -115,6 +114,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func Start(config config.Config) {
 
 	hosts := config.Hosts
+	pingInterval := time.Duration(config.Settings.PingIntervalSeconds) * time.Second
 
 	var spinner = spinner.New()
 	var SpinnerStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("69"))
@@ -134,6 +134,7 @@ func Start(config config.Config) {
 		results:        results,
 		timer:          timer.NewWithInterval(pingInterval, time.Millisecond),
 		timerResetChan: make(chan struct{}),
+		pingInterval:   pingInterval,
 	}
 
 	p := tea.NewProgram(model)

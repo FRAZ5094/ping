@@ -7,6 +7,5 @@ import (
 
 func main() {
 	config := config.Parse("config.yaml")
-
 	tui.Start(config)
 }
