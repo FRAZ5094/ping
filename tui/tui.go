@@ -2,121 +2,139 @@ package tui
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
-	"sort"
+	"ping/config"
+	"ping/pinger"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/timer"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
-type Host struct {
-	Name string
-	Addr string
-}
-
 type model struct {
-	hosts   []Host
-	results []pingResult
-	spinner spinner.Model
+	hosts          []config.Host
+	results        map[string]*pinger.PingResult
+	resultsChan    chan pingResultMsg
+	spinner        spinner.Model
+	timer          timer.Model
+	timerResetChan chan struct{}
 }
 
-func (h Host) ping(c chan<- pingResult, ordering int) {
-	delay := time.Duration(rand.Intn(1000)) * time.Millisecond
-	time.Sleep(delay)
-	c <- NewPingResult(h, rand.Intn(2) == 0, delay, ordering)
+func ping(host config.Host) pinger.PingResult {
+	pinger := pinger.New()
+	result := pinger.Ping(host)
+	return result
 }
 
-func (m model) runPings() tea.Cmd {
-	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
-		var results []pingResult
-		c := make(chan pingResult, len(m.hosts))
-		for i, h := range m.hosts {
-			go h.ping(c, i)
+type pingResultMsg struct {
+	host   config.Host
+	result pinger.PingResult
+}
+
+var pingInterval = 1 * time.Second
+
+func runPings(hosts []config.Host, resultsChan chan pingResultMsg, timerResetChan chan struct{}) tea.Cmd {
+	return func() tea.Msg {
+		for {
+			for _, host := range hosts {
+				go func() {
+					result := ping(host)
+					resultMsg := pingResultMsg{host: host, result: result}
+					resultsChan <- resultMsg
+				}()
+			}
+			time.Sleep(pingInterval)
+			timerResetChan <- struct{}{}
 		}
-		for range m.hosts {
-			results = append(results, <-c)
-		}
-		sort.Slice(results, func(i, j int) bool {
-			return results[i].ordering < results[j].ordering
-		})
-		return pingMsg{results: results}
-	})
+	}
+}
+
+func waitForResult(resultsChan chan pingResultMsg) tea.Cmd {
+	return func() tea.Msg {
+		result := <-resultsChan
+		return result
+	}
+}
+
+type timerResetMsg struct{}
+
+func waitForTimerReset(timerResetChan chan struct{}) tea.Cmd {
+	return func() tea.Msg {
+		resetEvent := <-timerResetChan
+		return timerResetMsg(resetEvent)
+	}
 }
 
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
-		m.runPings(),
+		runPings(m.hosts, m.resultsChan, m.timerResetChan),
+		waitForResult(m.resultsChan),
 		m.spinner.Tick,
+		m.timer.Init(),
+		waitForTimerReset(m.timerResetChan),
 	)
 }
 
 func (m model) View() string {
 	s := "\n"
-	m.spinner.Spinner = spinner.Line
-	s += m.spinner.View() + " Running pings...\n\n"
-	if len(m.results) == 0 {
-		m.spinner.Spinner = spinner.Dot
-		for _, host := range m.hosts {
-			s += fmt.Sprintf("%s%s: ...\n", m.spinner.View(), NameStyle.Render(host.Name))
-		}
-	} else {
-		for _, r := range m.results {
-			if r.success {
-				s += fmt.Sprintf("%s %s: %s\n", CheckMark, NameStyle.Render(r.host.Name), r.duration)
-			} else {
-				s += fmt.Sprintf("%s %s: ...\n", CrossMark, NameStyle.Render(r.host.Name))
-			}
-		}
-	}
-	s += "\n\n"
+	// s += RenderTable(m.results, m.hosts, m.spinner)
+	s += "\n"
+	m.spinner.Spinner = spinner.Dot
+	s += fmt.Sprintf("Next ping in: %s\n", m.timer.View())
+	s += "\n"
 	s += "Press any key to exit \n"
 	return s
 }
 
-type pingResult struct {
-	host     Host
-	success  bool
-	duration time.Duration
-	ordering int
-}
-
-func NewPingResult(host Host, success bool, duration time.Duration, ordering int) pingResult {
-	return pingResult{
-		host:     host,
-		success:  success,
-		duration: duration,
-		ordering: ordering,
-	}
-}
-
-type pingMsg struct {
-	results []pingResult
-}
-
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// is called every time something happens including when a key is pressed
-
 	switch msg := msg.(type) {
-	case pingMsg:
-		m.results = msg.results
-		return m, m.runPings()
+	case pingResultMsg:
+		result := msg.result
+		host := msg.host
+		m.results[host.Name] = &result
+		return m, waitForResult(m.resultsChan)
 	case tea.KeyMsg:
 		return m, tea.Quit
-	case spinner.TickMsg:
-		var cmd tea.Cmd
-		m.spinner, cmd = m.spinner.Update(msg)
-		return m, cmd
+	case timerResetMsg:
+		m.timer = timer.NewWithInterval(pingInterval, time.Millisecond)
+		return m, tea.Batch(
+			m.timer.Init(),
+			waitForTimerReset(m.timerResetChan),
+		)
+	default:
+		var spinnerCmd tea.Cmd
+		m.spinner, spinnerCmd = m.spinner.Update(msg)
+		var timerCmd tea.Cmd
+		m.timer, timerCmd = m.timer.Update(msg)
+		return m, tea.Batch(spinnerCmd, timerCmd)
 	}
-
-	return m, nil
 }
 
-func Run(hosts []Host) {
+func Start(config config.Config) {
+
+	hosts := config.Hosts
+
 	var spinner = spinner.New()
+	var SpinnerStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("69"))
 	spinner.Style = SpinnerStyle
-	model := model{hosts: hosts, spinner: spinner}
+
+	resultsChan := make(chan pingResultMsg)
+	results := make(map[string]*pinger.PingResult)
+
+	for _, host := range hosts {
+		results[host.Name] = nil
+	}
+
+	model := model{
+		hosts:          hosts,
+		spinner:        spinner,
+		resultsChan:    resultsChan,
+		results:        results,
+		timer:          timer.NewWithInterval(pingInterval, time.Millisecond),
+		timerResetChan: make(chan struct{}),
+	}
 
 	p := tea.NewProgram(model)
 

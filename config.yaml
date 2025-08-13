@@ -5,4 +5,4 @@ hosts:
     addr: "10.30.128.11"
 
 settings:
-  timeout_seconds: asdf
+  timeout_seconds: 1
