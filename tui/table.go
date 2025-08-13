@@ -4,6 +4,7 @@ import (
 	"ping/config"
 	"ping/pinger"
 	"time"
+
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/table"
@@ -14,10 +15,10 @@ var (
 	errorColor   = lipgloss.Color("#f7768e")
 	warningColor = lipgloss.Color("#ff9e64")
 	successColor = lipgloss.Color("#9ece6a")
-	primaryColor = lipgloss.Color("#7dcfff")
+	PrimaryColor = lipgloss.Color("#7dcfff")
 
-	BorderStyle = lipgloss.NewStyle().Foreground(primaryColor)
-	HeaderStyle = lipgloss.NewStyle().Foreground(primaryColor).Bold(true).Align(lipgloss.Center)
+	BorderStyle = lipgloss.NewStyle().Foreground(PrimaryColor)
+	HeaderStyle = lipgloss.NewStyle().Foreground(PrimaryColor).Bold(true).Align(lipgloss.Center)
 
 	rowStyle = lipgloss.NewStyle().Padding(0, 1).Foreground(gray).AlignHorizontal(lipgloss.Left)
 
@@ -49,8 +50,8 @@ func RenderTable(results map[string]*pinger.PingResult, hosts []config.Host, spi
 			spinnerModel.Spinner = spinner.Dot
 			data = append(data, []string{host.Name, spinnerModel.View(), "N/A"})
 		} else {
-			if result.Success {
-				latencyStyle := getLatencyStyle(result.Latency)
+			if result.Success && result.Latency != nil {
+				latencyStyle := getLatencyStyle(*result.Latency)
 				data = append(data, []string{host.Name, UpStatus.Render(), latencyStyle.Render(result.Latency.String())})
 			} else {
 				data = append(data, []string{host.Name, DownStatus.Render(), LatencyStyleBad.Render("N/A")})

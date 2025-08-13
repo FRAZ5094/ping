@@ -13,6 +13,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+var timerStyle = lipgloss.NewStyle().Foreground(PrimaryColor)
+
 type model struct {
 	hosts          []config.Host
 	results        map[string]*pinger.PingResult
@@ -25,7 +27,7 @@ type model struct {
 
 func ping(host config.Host) pinger.PingResult {
 	pinger := pinger.New()
-	result := pinger.Ping(host)
+	result := pinger.Ping(host.Addr)
 	return result
 }
 
@@ -68,11 +70,11 @@ func waitForTimerReset(timerResetChan chan struct{}) tea.Cmd {
 
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
-		runPings(m.hosts, m.pingInterval, m.resultsChan, m.timerResetChan),
-		waitForResult(m.resultsChan),
 		m.spinner.Tick,
 		m.timer.Init(),
 		waitForTimerReset(m.timerResetChan),
+		waitForResult(m.resultsChan),
+		runPings(m.hosts, m.pingInterval, m.resultsChan, m.timerResetChan),
 	)
 }
 
@@ -81,7 +83,7 @@ func (m model) View() string {
 	s += RenderTable(m.results, m.hosts, m.spinner)
 	s += "\n"
 	m.spinner.Spinner = spinner.Dot
-	s += fmt.Sprintf("Next ping in: %s\n", m.timer.View())
+	s += fmt.Sprintf("Next ping in: %s\n", timerStyle.Render(m.timer.View()))
 	s += "\n"
 	s += "Press any key to exit \n"
 	return s
@@ -97,7 +99,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		return m, tea.Quit
 	case timerResetMsg:
-		m.timer = timer.NewWithInterval(m.pingInterval, time.Millisecond)
+		m.timer = NewTimer(m.pingInterval)
 		return m, tea.Batch(
 			m.timer.Init(),
 			waitForTimerReset(m.timerResetChan),
@@ -111,13 +113,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 }
 
+func NewTimer(timeout time.Duration) timer.Model {
+	return timer.NewWithInterval(timeout, 1*time.Second)
+}
+
 func Start(config config.Config) {
 
 	hosts := config.Hosts
 	pingInterval := time.Duration(config.Settings.PingIntervalSeconds) * time.Second
 
 	var spinner = spinner.New()
-	var SpinnerStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("69"))
+	var SpinnerStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(PrimaryColor))
 	spinner.Style = SpinnerStyle
 
 	resultsChan := make(chan pingResultMsg)
@@ -132,7 +138,7 @@ func Start(config config.Config) {
 		spinner:        spinner,
 		resultsChan:    resultsChan,
 		results:        results,
-		timer:          timer.NewWithInterval(pingInterval, time.Millisecond),
+		timer:          NewTimer(pingInterval),
 		timerResetChan: make(chan struct{}),
 		pingInterval:   pingInterval,
 	}
