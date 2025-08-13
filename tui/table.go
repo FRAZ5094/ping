@@ -22,8 +22,8 @@ var (
 
 	rowStyle = lipgloss.NewStyle().Padding(0, 1).Foreground(gray).AlignHorizontal(lipgloss.Left)
 
-	UpStatus   = lipgloss.NewStyle().Foreground(successColor).SetString("UP")
-	DownStatus = lipgloss.NewStyle().Foreground(errorColor).SetString("DOWN")
+	UpStatus   = lipgloss.NewStyle().Foreground(successColor)
+	DownStatus = lipgloss.NewStyle().Foreground(errorColor)
 
 	LatencyStyleGood    = lipgloss.NewStyle().Foreground(successColor)
 	LatencyStyleWarning = lipgloss.NewStyle().Foreground(warningColor)
@@ -40,23 +40,37 @@ func getLatencyStyle(latency time.Duration) lipgloss.Style {
 	return LatencyStyleBad
 }
 
+func RenderRow(host string, addr string, status string, latency string) []string {
+	return []string{host, addr, status, latency}
+}
+
+func CreateRowFromResult(result *pinger.PingResult, host config.Host, spinnerModel spinner.Model) []string {
+
+	// If no result then its loading
+	if result == nil {
+		spinnerModel.Spinner = spinner.Dot
+		return RenderRow(host.Name, host.Addr, spinnerModel.View(), "N/A")
+	}
+
+	// If result was a success render an UP status row
+	if result.Success && result.Latency != nil {
+		latency := *result.Latency
+		latencyStyle := getLatencyStyle(latency)
+		return RenderRow(host.Name, host.Addr, UpStatus.Render("UP"), latencyStyle.Render(latency.String()))
+	}
+
+	// Then the host is down, so render a DOWN status row
+	return RenderRow(host.Name, host.Addr, DownStatus.Render("DOWN"), LatencyStyleBad.Render("N/A"))
+}
+
 func RenderTable(results map[string]*pinger.PingResult, hosts []config.Host, spinnerModel spinner.Model) string {
 	headers := []string{"HOST", "ADDRESS", "STATUS", "LATENCY"}
 
 	data := [][]string{}
 	for _, host := range hosts {
 		result := results[host.Name]
-		if result == nil {
-			spinnerModel.Spinner = spinner.Dot
-			data = append(data, []string{host.Name, host.Addr, spinnerModel.View(), "N/A"})
-		} else {
-			if result.Success && result.Latency != nil {
-				latencyStyle := getLatencyStyle(*result.Latency)
-				data = append(data, []string{host.Name, host.Addr, UpStatus.Render(), latencyStyle.Render(result.Latency.String())})
-			} else {
-				data = append(data, []string{host.Name, host.Addr, DownStatus.Render(), LatencyStyleBad.Render("N/A")})
-			}
-		}
+		row := CreateRowFromResult(result, host, spinnerModel)
+		data = append(data, row)
 	}
 
 	t := table.New().
