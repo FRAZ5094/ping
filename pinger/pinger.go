@@ -55,6 +55,10 @@ func (p livePinger) Ping(addr string) PingResult {
 	}
 	stats := pinger.Statistics()
 
+	if stats.PacketsRecv == 0 {
+		return newPingResult(false, nil)
+	}
+
 	return newPingResult(true, &stats.AvgRtt)
 }
 
