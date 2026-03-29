@@ -2,6 +2,7 @@ package pinger
 
 import (
 	"math/rand"
+	"runtime"
 	"time"
 
 	probing "github.com/prometheus-community/pro-bing"
@@ -47,7 +48,7 @@ func (p livePinger) Ping(addr string) PingResult {
 		)
 	}
 	pinger.Count = 1
-	pinger.SetPrivileged(false)
+	pinger.SetPrivileged(runtime.GOOS == "windows")
 	pinger.Timeout = 1 * time.Second
 	err = pinger.Run()
 	if err != nil {
