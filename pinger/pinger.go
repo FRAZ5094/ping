@@ -47,7 +47,7 @@ func (p livePinger) Ping(addr string) PingResult {
 		)
 	}
 	pinger.Count = 1
-	pinger.SetPrivileged(true)
+	pinger.SetPrivileged(false)
 	pinger.Timeout = 1 * time.Second
 	err = pinger.Run()
 	if err != nil {
